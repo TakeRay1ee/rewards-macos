@@ -1,6 +1,8 @@
 # 中文文档入口
 
-中文项目说明已统一到 **[README.md](README.md)**，避免两份安装步骤和配置说明发生偏差。
+项目说明统一维护在 **[中英双语 README.md](README.md)**，避免安装步骤和配置说明发生偏差。
+
+[简体中文](README.md#zh-cn) | [English](README.md#english)
 
 - [快速开始](README.md#快速开始)
 - [macOS 与受限 GUI 的范围](README.md#macos-与受限-gui-的范围)

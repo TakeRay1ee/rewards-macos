@@ -1,5 +1,9 @@
 # Rewards macOS
 
+[简体中文](#zh-cn) | [English](#english)
+
+<a id="zh-cn"></a>
+
 **在 macOS 上运行 Microsoft Rewards 自动化，并通过受限的本机 GUI 查看和管理任务。**
 
 基于 `Microsoft-Rewards-Script` 的 `V4-china` v4.3.3，增加 macOS 原生部署、实时监控、持久运行记录和故障恢复。后台沿用原有 TypeScript 执行引擎，界面提供账号、积分、日志与运行管理。无需 Docker。
@@ -202,3 +206,214 @@ Microsoft Rewards 对自动化搜索及计分行为有限制，账号可能受�
 本地扩展版从 [chiihero/Microsoft-Rewards-Script 的 V4-china](https://github.com/chiihero/Microsoft-Rewards-Script/tree/1763135896905d1c08f65d058cdf10860a3b591e) 导入，基准为 **v4.3.3 / `1763135`**；该分支继承 [TheNetsky/Microsoft-Rewards-Script v4](https://github.com/TheNetsky/Microsoft-Rewards-Script/tree/v4)。本地扩展版本不代表上游发布版本。
 
 采用 **[GPL-3.0-or-later](LICENSE)**，保留 Netsky、chiihero 及其他上游贡献者署名。第三方来源见[署名说明](THIRD_PARTY_NOTICES.md)，原分支文档快照见[上游档案](docs/upstream-v4-china.md)，本地版本变化见[CHANGELOG](CHANGELOG.md)。
+
+## English
+
+[简体中文](#zh-cn) | **English**
+
+**Run Microsoft Rewards automation on macOS and observe or manage tasks through a limited local GUI.**
+
+Based on `Microsoft-Rewards-Script` **V4-china v4.3.3**, this extension adds native macOS deployment, live monitoring, durable run history, and recovery. The original TypeScript engine still performs account activities. Docker is not required for the native macOS setup.
+
+**Platform scope:** native installation, LaunchAgent scheduling, and GUI service management primarily target **macOS** and have been verified on **Apple Silicon**. The GUI is a browser-based local workbench with limited queries and predefined controls. Account configuration, initial login, and system permissions still require local setup.
+
+![Monitoring overview with synthetic demonstration accounts](docs/images/overview.png)
+
+Screenshots use synthetic data. The public repository includes no personal accounts, login sessions, or actual points records. This project is not affiliated with or endorsed by Microsoft.
+
+### macOS and the limited GUI
+
+The GUI is served by the local monitor at `127.0.0.1:3000`, which connects to the local Control API at `127.0.0.1:3010`. Tasks execute on that Mac. Closing the browser page does not stop background tasks.
+
+| Need                         | Available in the GUI                                                                                  | What still requires local action                                                                                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Observe execution            | Account status, today's and current-run results, points trends, logs, history, and resource summaries | Missing observations remain unknown; the GUI cannot reconstruct facts that were never recorded                                                                    |
+| Control runs                 | Start all or selected configured accounts, stop gracefully, force-stop, and restart services          | Actions require a local control key and confirmation; only predefined actions are exposed                                                                         |
+| Configure accounts and tasks | View selected configuration and session summaries                                                     | Edit `.env` / `config.json` to add or remove accounts, change task switches, concurrency, or schedule; restart services or re-register the schedule as instructed |
+| Login and session recovery   | View errors and session status                                                                        | Run manual login in a terminal and complete verification in the browser; expired sessions may require manual repair                                               |
+| Deployment and permissions   | View local service/scheduling information and request a limited service restart                       | Install dependencies, register LaunchAgents, and handle macOS permissions and power conditions                                                                    |
+
+The GUI is not a complete configuration editor or a public remote-management deployment. Responsive layouts do not make a phone an independent automation host. Upstream Windows and Docker engine entry points are retained, but macOS GUI operations, `launchd` scheduling, and resource collection are not claimed to work across platforms. See the [upstream documentation archive](docs/upstream-v4-china.md) for upstream platform options.
+
+### Features
+
+- **Multiple accounts:** non-contiguous account numbers, separate desktop/mobile sessions, an explicit concurrency limit, and staggered worker starts.
+- **Live monitoring:** per-account status, current steps, waits, activity events, and errors, with visible connection and observation gaps.
+- **Points reports:** balances, calendar-day earnings, and date-range summaries. Unknown values remain empty instead of being converted to zero.
+- **Run management:** select accounts, start or stop runs, restart services, and inspect local resources and session summaries.
+- **Durable recovery:** the API and monitor retain run identities and events, handle restarts, delayed logs, and duplicate requests, and preserve unfinished account selections.
+- **Original activities:** daily sets, check-in, reading, promotions, desktop/mobile searches, and notifications continue to use the original engine. Availability depends on the account, region, configuration, and service responses.
+
+### Quick start
+
+The verified native environment is **macOS on Apple Silicon**, with Homebrew, **Node.js 24+**, and network access to download Chromium. The installer defaults to `/opt/homebrew/bin/node`. Intel Macs commonly use a different Homebrew path; one-command installation on Intel has not been verified.
+
+#### 1. Download and install
+
+Download and extract **Code → Download ZIP**, or clone the repository:
+
+```bash
+git clone https://github.com/TakeRay1ee/rewards-macos.git
+cd rewards-macos
+```
+
+From the project root, install:
+
+```bash
+brew install node
+bash install.command
+```
+
+The installer installs dependencies and Patchright Chromium, builds the engine and GUI, creates missing `config.json` / `.env` files, and registers local LaunchAgents. Existing configuration is preserved. Installation also registers the daily schedule and catch-up guard; configured accounts can therefore run on subsequent scheduled triggers.
+
+#### 2. Add local accounts
+
+Edit `.env` in the project root. The installer creates API settings, and the monitor creates its local control key on first startup. Keep the existing settings and append accounts:
+
+```dotenv
+ACCOUNT_1_EMAIL=you@example.com
+# Set a password only when using password-based login.
+# ACCOUNT_1_PASSWORD=replace_locally
+ACCOUNT_1_GEO_LOCALE=CN
+ACCOUNT_1_LANG_CODE=zh-CN
+
+# Use distinct positive numbers for additional accounts; gaps are allowed.
+# ACCOUNT_3_EMAIL=another@example.com
+# ACCOUNT_3_GEO_LOCALE=auto
+# ACCOUNT_3_LANG_CODE=en
+```
+
+See [`env.example`](env.example) for available fields and per-account proxy settings, and [`config.example.json`](config.example.json) for activity switches, browser options, and notifications. The API reads account environment variables at startup; restart services after editing `.env`.
+
+#### 3. Sign in and open the GUI
+
+Run manual login in a local terminal and complete the browser verification:
+
+```bash
+npm run manual-login -- you@example.com --platform both
+bash restart.command
+```
+
+Open **[http://127.0.0.1:3000](http://127.0.0.1:3000)**. In the Run management page (`运行管理`), select accounts and confirm before starting a run. Manual login and real task execution access external accounts; successful installation or checks alone do not establish that an account is signed in or that its tasks have completed.
+
+For later use, run `bash start.command` without reinstalling. See [Operations and recovery (Chinese)](docs/operations.md) for details.
+
+### Navigation
+
+| GUI entry                 | Purpose                                                               |
+| ------------------------- | --------------------------------------------------------------------- |
+| 总览 — Overview           | Run summary, account progress, points, and issues requiring attention |
+| 账号 — Accounts           | Account list, filters, and account details with live logs             |
+| 积分报表 — Points reports | Balances, daily earnings, and date-range statistics                   |
+| 日志 — Logs               | Live logs with severity and account filters                           |
+| 运行历史 — Run history    | Batches, account results, and exit information                        |
+| 运行管理 — Run management | Run/service controls, resources, sessions, and scheduling information |
+
+The GUI supports light/dark themes and narrow screens. Monitoring queries do not start tasks themselves. The watchdog and daily guard are separate, recorded recovery/scheduling mechanisms.
+
+### The maintainer's schedule and concurrency
+
+The maintainer currently uses the following plan on a Mac. The repository distributes source code and examples; users must configure their own accounts, sign in, and register the schedule. The maintainer's accounts and runtime state are not distributed.
+
+| Setting                      | Current plan                                                                                              |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Time zone and daily boundary | `Asia/Shanghai`; account results are checked by Shanghai calendar day                                     |
+| Daily trigger                | **Begin scheduling at 00:00**                                                                             |
+| Concurrency                  | **Up to 3 accounts in parallel**; the current three accounts each receive a worker                        |
+| Startup spacing              | **20–40 seconds between account starts**; tasks can overlap after workers are started                     |
+| Catch-up checks              | Every **600 seconds (10 minutes)**; retry only accounts without a confirmed successful result for the day |
+
+Set these values in the local `.env`:
+
+```dotenv
+REWARDS_CONCURRENCY=3
+REWARDS_DAILY_HOUR=0
+REWARDS_DAILY_MINUTE=0
+```
+
+Check `accountDelay` in the existing `config.json`, preserving its other settings:
+
+```json
+{
+    "accountDelay": { "min": "20s", "max": "40s" }
+}
+```
+
+`REWARDS_CONCURRENCY=3` is a concurrency limit, not an instruction to launch three browsers at the same instant. Additional accounts are balanced across workers and execute sequentially within each worker, retaining their delays. Without an explicit concurrency value, the scheduler estimates capacity from memory. The legacy `REWARDS_FORCE_CLUSTERS` option remains supported but has lower priority than `REWARDS_CONCURRENCY`. Actual capacity depends on hardware and task behavior.
+
+After changing the daily trigger time, re-register only the daily agent:
+
+```bash
+bash scripts/macos/install-launchd.sh --only local.rewards.daily
+```
+
+The installer registers these macOS user LaunchAgents:
+
+| LaunchAgent                | Trigger or lifecycle                                               | Responsibility                                                                           |
+| -------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `local.rewards.api`        | Starts when loaded; kept alive after an unsuccessful exit          | Local Control API, port 3010 by default                                                  |
+| `local.rewards.monitor`    | Starts when loaded; kept alive after an unsuccessful exit          | GUI, aggregated state, and limited controls, port 3000 by default                        |
+| `local.rewards.daily`      | Daily at 00:00; registration does not immediately start a task run | Start daily scheduling with staggered account workers                                    |
+| `local.rewards.dailyguard` | Checks when loaded, then every 600 seconds                         | Catch up accounts missing a successful result; skip accounts already successful that day |
+| `local.rewards.keepawake`  | Runs `caffeinate -s` when loaded                                   | Prevent system sleep on AC power while allowing the display to sleep                     |
+
+`launchd` calendar triggers use the **Mac's system time zone**. Keep that zone set to Shanghai for an exact Shanghai midnight trigger; setting the process `TZ` alone does not move the system calendar trigger. The Mac must be on and the user logged in. If sleep or another interruption causes a missed trigger, the catch-up guard checks again when execution becomes possible. Closing the GUI does not pause these agents, and `stop.command` does not unregister the daily agent. See [Operations and recovery (Chinese)](docs/operations.md) for pausing the automatic schedule.
+
+The account list separates today's confirmed outcomes from current-run progress: running only one account does not erase the other accounts' completion for today or count them as completed in that single-account run. Trends use consecutive Shanghai calendar dates, and the vertical axis recalculates with the selected range's data. Missing observations appear as `—`; an observed zero remains `0`. Earnings are archived by batch end date; cross-day batches are not split into estimated daily credits.
+
+Mobile and desktop limits are determined independently from service responses. Missing mobile limits in one response do not establish that mobile activity is unavailable for every account or region. Experimental API searches and Edge browsing are disabled by default; see the configuration example.
+
+### Architecture and local data
+
+```text
+React GUI → Local monitor (3000) → Control API (3010) → Original task engine
+                    │                     │                    │
+           Events / points views     Run registry / logs    Account sessions
+```
+
+Services bind to loopback by default. Configuration, sessions, logs, and runtime records stay local:
+
+| Location                      | Contents                                                     |
+| ----------------------------- | ------------------------------------------------------------ |
+| `.env` / `config.json`        | Local accounts, API settings, and task configuration         |
+| `sessions/` or `sessionPath`  | SQLite account/platform sessions and fingerprints            |
+| `.control-api/runtime.sqlite` | Run identities, logs, history, and idempotent requests       |
+| `monitor/data/`               | Monitor events, ledger, recovery plans, and resource samples |
+| `logs/`                       | Engine and local service logs                                |
+
+The public distribution contains source, examples, tests, and documentation. Do not add personal configuration, sessions, runtime records, or backups to public commits.
+
+Further documentation: [Architecture (Chinese)](docs/architecture.md) and [Control API extensions (Chinese)](docs/control-api.md).
+
+### Development and checks
+
+```bash
+npm ci --ignore-scripts
+npm --prefix monitor/web ci --ignore-scripts
+npm run check
+npm run build
+npm run install:browser
+npm run test:web
+```
+
+- `npm run check`: type checking, ESLint, offline tests, and formatting checks.
+- `npm run test:web`: build the GUI and run isolated browser tests with synthetic accounts and a fake executor.
+- GUI development: `npm --prefix monitor/web run dev`, using Vite's proxy to the local monitor.
+- Control API: `npm run api`; monitor: `npm --prefix monitor start`. Avoid port conflicts with already loaded LaunchAgents.
+
+Tests cover session-lock contention, worker lifecycle, API crash recovery, idempotent controls, event replay, points semantics, and page updates. **Passing offline or GUI tests does not prove real Microsoft login, points crediting, external rate-limit behavior, or stability at every browser concurrency level.** The CI definition covers Node.js 24/26 on Linux/macOS; consult the corresponding Actions run for actual results.
+
+### Contributors and AI collaboration
+
+- **[TakeRay1ee](https://github.com/TakeRay1ee)**: project maintenance, requirements and runtime decisions, local deployment, and usage feedback.
+- **[Codex](https://openai.com/codex/) (OpenAI AI coding assistant)**: assisted under the maintainer's direction with code review and repairs, macOS scheduling and state synchronization, GUI and trend improvements, regression tests, and documentation.
+
+Codex participated as an AI-assisted development tool. Upstream authorship, provenance, and license notices remain preserved below.
+
+### Usage boundaries and provenance
+
+Microsoft Rewards restricts automated search and points-earning behavior, and accounts may be restricted. Read the [Microsoft Services Agreement](https://www.microsoft.com/en-US/servicesagreement) and [official Rewards help](https://support.microsoft.com/en-us/accounts-billing/rewards/getting-the-most-out-of-microsoft-rewards). This project does not bypass verification, risk-control prompts, or account restrictions, and does not guarantee valid points or account safety.
+
+This local extension was imported from [chiihero/Microsoft-Rewards-Script, V4-china](https://github.com/chiihero/Microsoft-Rewards-Script/tree/1763135896905d1c08f65d058cdf10860a3b591e), with baseline **v4.3.3 / `1763135`**. That branch inherits [TheNetsky/Microsoft-Rewards-Script v4](https://github.com/TheNetsky/Microsoft-Rewards-Script/tree/v4). Local extension versions do not represent upstream releases.
+
+Licensed under **[GPL-3.0-or-later](LICENSE)**. Netsky, chiihero, and other upstream contributors retain their attribution. See [Third-party notices (Chinese)](THIRD_PARTY_NOTICES.md), the [upstream documentation archive](docs/upstream-v4-china.md), and the [local changelog (Chinese)](CHANGELOG.md).
