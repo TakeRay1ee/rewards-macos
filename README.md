@@ -188,6 +188,13 @@ npm run test:web
 
 测试覆盖会话锁竞争、worker 生命周期、API 崩溃接管、幂等启停、事件重放、积分语义与页面同步。**离线或界面测试通过不代表真实登录、积分到账、外部限流或所有浏览器并发数量通过。** CI 定义覆盖 Node.js 24/26 和 Linux/macOS；实际结果以对应 Actions 运行记录为准。
 
+## 贡献者与 AI 协作
+
+- **[TakeRay1ee](https://github.com/TakeRay1ee)**：项目维护、需求与运行方案确定、本机部署和使用反馈。
+- **[Codex](https://openai.com/codex/)（OpenAI AI 编程助手）**：在维护者指示下，协助代码审查与修复、macOS 调度和状态同步、GUI 与趋势图优化、回归测试及文档整理。
+
+Codex 以 AI 辅助开发工具的身份参与本项目。上游作者、代码来源与许可说明保留如下。
+
 ## 使用边界与来源
 
 Microsoft Rewards 对自动化搜索及计分行为有限制，账号可能受到限制；请阅读 [Microsoft 服务协议](https://www.microsoft.com/en-US/servicesagreement)及[Rewards 官方帮助](https://support.microsoft.com/en-us/accounts-billing/rewards/getting-the-most-out-of-microsoft-rewards)。本项目不绕过安全验证、风控提示或账号限制，也不保证积分有效或账号安全。
