@@ -1,0 +1,15 @@
+{
+    "name": "rewards-monitor",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Microsoft Rewards macOS 只读监控服务",
+    "scripts": {
+        "start": "node server/index.mjs",
+        "dev": "node server/index.mjs",
+        "build": "npm --prefix web run build"
+    },
+    "engines": {
+        "node": ">=24.0.0"
+    }
+}

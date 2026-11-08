@@ -1,0 +1,37 @@
+name: Quality checks
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+permissions:
+    contents: read
+jobs:
+    offline-checks:
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest]
+                node: [24, 26]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: ${{ matrix.node }}
+                  cache: npm
+            - run: npm ci --ignore-scripts
+            - run: npm --prefix monitor/web ci --ignore-scripts
+            - run: npm run check
+            - run: npm run build
+            - run: npm --prefix monitor/web run build
+    browser-checks:
+        runs-on: macos-latest
+        steps:
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: 24
+                  cache: npm
+            - run: npm ci --ignore-scripts
+            - run: npm --prefix monitor/web ci --ignore-scripts
+            - run: npm run install:browser
+            - run: npm run test:web

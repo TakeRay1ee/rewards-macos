@@ -1,0 +1,111 @@
+import { MicrosoftRewardsBot, executionContext } from '../../../index'
+import type { Account } from '../../../interface/Account'
+import { URLs } from '../../../constants/urls'
+import { SearchProgress, type SearchQuota } from './SearchProgress'
+
+interface SearchPlan {
+    doMobile: boolean
+    doDesktop: boolean
+    mobileMissing: number
+    desktopMissing: number
+}
+
+export class SearchManager {
+    private readonly progress: SearchProgress
+
+    constructor(private bot: MicrosoftRewardsBot) {
+        this.progress = new SearchProgress(bot)
+    }
+
+    async getSearchPoints(): Promise<SearchPlan> {
+        const counters = await this.progress.getCounters()
+        const quotas = this.progress.calculateQuotas(counters)
+        const mobileMissing = quotas.mobile.remaining
+        const desktopQuota = this.progress.calculateQuota(counters.pcSearch)
+        const desktopMissing = desktopQuota.remaining
+
+        const doMobile = this.bot.config.workers.doMobileSearch && quotas.mobile.known && mobileMissing > 0
+        const doDesktop = this.bot.config.workers.doDesktopSearch && desktopQuota.known && desktopMissing > 0
+
+        // 缺少额度时把实际拿到的计数器名打出来：将来该区若放开移动端额度，
+        // 这里会立刻出现 MobileSearch，可据此确认"不是 bug，而是暂时没有该能力"。
+        if (!quotas.mobile.known) {
+            this.bot.logger.debug(
+                'main',
+                'SEARCH-MANAGER',
+                `移动端额度缺失 | 当前计数器=${Object.keys(counters ?? {}).join(',') || '无'}`
+            )
+        }
+
+        this.bot.logger.info(
+            'main',
+            'SEARCH-MANAGER',
+            `移动端: ${this.describeQuota(this.bot.config.workers.doMobileSearch, quotas.mobile)}` +
+                ` | 桌面端: ${this.describeQuota(this.bot.config.workers.doDesktopSearch, desktopQuota)}` +
+                `${quotas.edge.max > 0 ? ` | Edge: ${quotas.edge.earned}/${quotas.edge.max}` : ''}`
+        )
+
+        return { doMobile, doDesktop, mobileMissing, desktopMissing }
+    }
+
+    private describeQuota(enabled: boolean, quota: SearchQuota): string {
+        if (!enabled) return `skip (disabled, ${quota.earned}/${quota.max})`
+        if (!quota.known) return 'skip (quota not provided)'
+        if (quota.remaining <= 0) return `skip (complete, ${quota.earned}/${quota.max})`
+        return `run (${quota.earned}/${quota.max}, missing ${quota.remaining})`
+    }
+
+    searchMobile(account: Account): Promise<number> {
+        return this.search(account, true)
+    }
+
+    searchDesktop(account: Account): Promise<number> {
+        return this.search(account, false)
+    }
+
+    private search(account: Account, isMobile: boolean): Promise<number> {
+        const platform = isMobile ? 'Mobile' : 'Desktop'
+        const page = isMobile ? this.bot.mainMobilePage : this.bot.mainDesktopPage
+
+        return executionContext.run({ isMobile, account }, async () => {
+            try {
+                return await this.bot.activities.doSearch(page, isMobile)
+            } catch (error) {
+                this.bot.logger.error(
+                    'main',
+                    'SEARCH-MANAGER',
+                    `${platform} 搜索失败 | ${error instanceof Error ? error.message : String(error)}`
+                )
+                return 0
+            }
+        })
+    }
+
+    async bonusMobile(account: Account): Promise<number> {
+        this.bot.logger.info('main', 'SEARCH-MANAGER', '开始奖励搜索')
+
+        const gained = await executionContext.run({ isMobile: true, account }, async () => {
+            try {
+                return await this.bot.activities.doBonusSearches(this.bot.mainMobilePage)
+            } catch (error) {
+                this.bot.logger.error(
+                    'main',
+                    'SEARCH-MANAGER',
+                    `奖励搜索失败 | ${error instanceof Error ? error.message : String(error)}`
+                )
+                return 0
+            } finally {
+                if (!this.bot.mainMobilePage.isClosed()) {
+                    await this.bot.mainMobilePage.goto(URLs.bing.origin).catch(() => {})
+                }
+            }
+        })
+
+        this.bot.logger.info(
+            'main',
+            'SEARCH-MANAGER',
+            `奖励搜索汇总 | 获得积分=${gained} | 当前余额=${this.bot.userData.currentPoints}`
+        )
+        return gained
+    }
+}
